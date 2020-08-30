@@ -1,5 +1,7 @@
 #include <LilyGoWatch.h>
 
+
+// TODO: extract custom types into dir and lib
 // * Global defs
 typedef struct
 {
@@ -8,6 +10,7 @@ typedef struct
   lv_obj_t *second;
 } str_datetime_t;
 
+// TODO: If global vars are necessary, abstract away
 static str_datetime_t g_data;
 TTGOClass *watch = nullptr;
 PCF8563_Class *rtc;
@@ -16,6 +19,7 @@ EventGroupHandle_t g_event_group = NULL;
 EventGroupHandle_t isr_group = NULL;
 bool lenergy = false;
 
+// TODO: Create defs header
 #define G_EVENT_VBUS_PLUGIN _BV(0)
 #define G_EVENT_VBUS_REMOVE _BV(1)
 #define G_EVENT_CHARGE_DONE _BV(2)
@@ -39,6 +43,7 @@ enum
 #define WATCH_FLAG_BMA_IRQ _BV(3)
 #define WATCH_FLAG_AXP_IRQ _BV(4)
 
+// TODO: Extract to header
 // * Macro calls
 LV_IMG_DECLARE(black_bg);
 LV_FONT_DECLARE(liquidCrystal_nor_64);
@@ -62,10 +67,14 @@ void init_power(TTGOClass *watch)
       AXP202_INT, [] {
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         EventBits_t bits = xEventGroupGetBitsFromISR(isr_group);
+
+        // TODO: Identify other power flags/modes
         if (bits & WATCH_FLAG_SLEEP_MODE)
         {
           // For quick wake up, use the group flag
-          xEventGroupSetBitsFromISR(isr_group, WATCH_FLAG_SLEEP_EXIT | WATCH_FLAG_AXP_IRQ, &xHigherPriorityTaskWoken);
+          xEventGroupSetBitsFromISR(isr_group,
+            WATCH_FLAG_SLEEP_EXIT | WATCH_FLAG_AXP_IRQ,
+            &xHigherPriorityTaskWoken);
         }
         else
         {
@@ -84,6 +93,7 @@ void setup()
 {
   Serial.begin(115200);
 
+  // TODO: grok these event groups and queues, extract to include
   //Create a program that allows the required message objects and group flags
   g_event_queue_handle = xQueueCreate(20, sizeof(uint8_t));
   g_event_group = xEventGroupCreate();
@@ -104,6 +114,7 @@ void setup()
   watch->openBL();
   watch->bl->adjust(20);
 
+  // TODO: Extract gui logic
   // create and init face img obj
   lv_obj_t *face = lv_img_create(lv_scr_act(), NULL);
   lv_img_set_src(face, &black_bg);
@@ -130,6 +141,7 @@ void setup()
   lv_label_set_text(g_data.second, ":00");
   lv_obj_align(g_data.second, g_data.minute, LV_ALIGN_IN_TOP_LEFT, 75, 0);
 
+  // TODO: Create folder for tasks and extract
   lv_task_create([](lv_task_t *t) {
     RTC_Date curr_datetime = rtc->getDateTime();
     lv_label_set_text_fmt(g_data.second, ":%02u", curr_datetime.second);
@@ -144,5 +156,6 @@ void setup()
 
 void loop()
 {
+  // TODO: Update to handle addl watch states
   lv_task_handler();
 }
