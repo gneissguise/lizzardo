@@ -1,6 +1,5 @@
 #include <LilyGoWatch.h>
 
-
 // TODO: extract custom types into dir and lib
 // * Global defs
 typedef struct
@@ -73,8 +72,8 @@ void init_power(TTGOClass *watch)
         {
           // For quick wake up, use the group flag
           xEventGroupSetBitsFromISR(isr_group,
-            WATCH_FLAG_SLEEP_EXIT | WATCH_FLAG_AXP_IRQ,
-            &xHigherPriorityTaskWoken);
+                                    WATCH_FLAG_SLEEP_EXIT | WATCH_FLAG_AXP_IRQ,
+                                    &xHigherPriorityTaskWoken);
         }
         else
         {
@@ -89,12 +88,27 @@ void init_power(TTGOClass *watch)
       FALLING);
 }
 
+void fmt_time_12hr(uint8_t hour_in, uint8_t *hour_out, char **meridian)
+{
+  int base_hr = (int)hour_in;
+
+  if (base_hr > 11)
+  {
+    *hour_out = base_hr != 12 ? (uint8_t)(base_hr - 12) : (uint8_t)base_hr;
+    strcpy(*meridian, (new char[3]{'p', 'm', '\0'}));
+  }
+  else
+  {
+    *hour_out = hour_in;
+  }
+}
+
 void setup()
 {
   Serial.begin(115200);
 
   // TODO: grok these event groups and queues, extract to include
-  //Create a program that allows the required message objects and group flags
+  // Create a program that allows the required message objects and group flags
   g_event_queue_handle = xQueueCreate(20, sizeof(uint8_t));
   g_event_group = xEventGroupCreate();
   isr_group = xEventGroupCreate();
@@ -109,6 +123,7 @@ void setup()
   // Init watch rtc
   rtc = watch->rtc;
   rtc->check();
+  rtc->formatDateTime(0);
 
   // Turn on backlight and set brightness
   watch->openBL();
@@ -128,25 +143,36 @@ void setup()
   g_data.hour = lv_label_create(face, nullptr);
   lv_obj_add_style(g_data.hour, LV_OBJ_PART_MAIN, &style);
 
-  lv_label_set_text(g_data.hour, "00");
-  lv_obj_align(g_data.hour, face, LV_ALIGN_IN_TOP_LEFT, 10, 85);
+  static RTC_Date init_time = rtc->getDateTime();
+  uint8_t hour_12 = (uint8_t)12;
+  char *meridian = new char[3]{'a', 'm', '\0'};
+
+  fmt_time_12hr(init_time.hour, &hour_12, &meridian);
+
+  lv_label_set_text_fmt(g_data.hour, "%02u", hour_12);
+  lv_obj_align(g_data.hour, face, LV_ALIGN_IN_TOP_LEFT, 5, 85);
 
   g_data.minute = lv_label_create(face, nullptr);
   lv_obj_add_style(g_data.minute, LV_OBJ_PART_MAIN, &style);
-  lv_label_set_text(g_data.minute, ":00");
+  lv_label_set_text_fmt(g_data.minute, ":%02u", init_time.minute);
   lv_obj_align(g_data.minute, g_data.hour, LV_ALIGN_IN_TOP_LEFT, 75, 0);
 
   g_data.second = lv_label_create(face, nullptr);
   lv_obj_add_style(g_data.second, LV_OBJ_PART_MAIN, &style);
-  lv_label_set_text(g_data.second, ":00");
-  lv_obj_align(g_data.second, g_data.minute, LV_ALIGN_IN_TOP_LEFT, 75, 0);
+  lv_label_set_text_fmt(g_data.second, "%s", meridian);
+
+  lv_obj_align(g_data.second, g_data.minute, LV_ALIGN_IN_TOP_LEFT, 85, 0);
 
   // TODO: Create folder for tasks and extract
   lv_task_create([](lv_task_t *t) {
     RTC_Date curr_datetime = rtc->getDateTime();
-    lv_label_set_text_fmt(g_data.second, ":%02u", curr_datetime.second);
+    uint8_t hour_12 = (uint8_t)12;
+    char *meridian = new char[3]{'a', 'm', '\0'};
+
+    fmt_time_12hr(curr_datetime.hour, &hour_12, &meridian);
+    lv_label_set_text_fmt(g_data.second, "%s", meridian);
     lv_label_set_text_fmt(g_data.minute, ":%02u", curr_datetime.minute);
-    lv_label_set_text_fmt(g_data.hour, "%02u", curr_datetime.hour);
+    lv_label_set_text_fmt(g_data.hour, "%02u", hour_12);
   },
                  1000, LV_TASK_PRIO_MID, nullptr);
 
