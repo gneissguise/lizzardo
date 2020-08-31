@@ -174,7 +174,7 @@ void setup()
     lv_label_set_text_fmt(g_data.minute, ":%02u", curr_datetime.minute);
     lv_label_set_text_fmt(g_data.hour, "%02u", hour_12);
   },
-                 1000, LV_TASK_PRIO_MID, nullptr);
+                 60000, LV_TASK_PRIO_MID, nullptr);
 
   // Lower operating speed in mhz to reduce power consumption
   setCpuFrequencyMhz(2);
