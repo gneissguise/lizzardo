@@ -11,6 +11,7 @@ typedef struct
 
 // TODO: If global vars are necessary, abstract away
 static str_datetime_t g_data;
+lv_obj_t *g_batt = NULL;
 TTGOClass *watch = nullptr;
 PCF8563_Class *rtc;
 QueueHandle_t g_event_queue_handle = NULL;
@@ -46,6 +47,7 @@ enum
 // * Macro calls
 LV_IMG_DECLARE(black_bg);
 LV_FONT_DECLARE(liquidCrystal_nor_64);
+LV_FONT_DECLARE(liquidCrystal_nor_24);
 
 void init_power(TTGOClass *watch)
 {
@@ -135,10 +137,17 @@ void setup()
   lv_img_set_src(face, &black_bg);
   lv_obj_align(face, NULL, LV_ALIGN_CENTER, 0, 0);
 
+
+  // style definitions
   static lv_style_t style;
   lv_style_init(&style);
   lv_style_set_text_color(&style, LV_STATE_DEFAULT, LV_COLOR_RED);
   lv_style_set_text_font(&style, LV_STATE_DEFAULT, &liquidCrystal_nor_64);
+
+  static lv_style_t batt_style;
+  lv_style_init(&batt_style);
+  lv_style_set_text_color(&batt_style, LV_STATE_DEFAULT, LV_COLOR_LIME);
+  lv_style_set_text_font(&batt_style, LV_STATE_DEFAULT, &liquidCrystal_nor_24);
 
   g_data.hour = lv_label_create(face, nullptr);
   lv_obj_add_style(g_data.hour, LV_OBJ_PART_MAIN, &style);
@@ -160,8 +169,12 @@ void setup()
   g_data.second = lv_label_create(face, nullptr);
   lv_obj_add_style(g_data.second, LV_OBJ_PART_MAIN, &style);
   lv_label_set_text_fmt(g_data.second, "%s", meridian);
-
   lv_obj_align(g_data.second, g_data.minute, LV_ALIGN_IN_TOP_LEFT, 85, 0);
+
+  g_batt = lv_label_create(face, nullptr);
+  lv_obj_add_style(g_batt, LV_OBJ_PART_MAIN, &batt_style);
+  lv_label_set_text_fmt(g_batt, "%i pct", watch->power->getBattPercentage());
+  lv_obj_align(g_batt, face, LV_ALIGN_IN_TOP_RIGHT, -20, 0);
 
   // TODO: Create folder for tasks and extract
   lv_task_create([](lv_task_t *t) {
@@ -173,11 +186,12 @@ void setup()
     lv_label_set_text_fmt(g_data.second, "%s", meridian);
     lv_label_set_text_fmt(g_data.minute, ":%02u", curr_datetime.minute);
     lv_label_set_text_fmt(g_data.hour, "%02u", hour_12);
+    lv_label_set_text_fmt(g_batt, "%i pct", watch->power->getBattPercentage());
   },
                  60000, LV_TASK_PRIO_MID, nullptr);
 
   // Lower operating speed in mhz to reduce power consumption
-  setCpuFrequencyMhz(2);
+  setCpuFrequencyMhz(1);
 }
 
 void loop()
